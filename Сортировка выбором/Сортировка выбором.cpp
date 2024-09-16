@@ -5,51 +5,53 @@
 #include <future>
 #include <thread>
 
-void sortSelect(int arr[], int size, std::promise<void>& prom)
+void min_index(int* arr, int start, const int size, std::promise<int>& prom)
 {
-	for (int i = 0; i < size - 1; ++i)
-	{
-		int min{ i };
-		
-		for (int j = i + 1; j < size; ++j)
-		{
-			if (arr[j] < arr[min])
-			{
-				min = j;
-			}
-		}
+	int min = start;
 
-		if (min != i)
-		{
-			int temp = arr[i];
-			arr[i] = arr[min];
-			arr[min] = temp;
+	for (int i = start + 1; i < size; ++i) {
+		if (arr[i] < arr[min]) {
+			min = i;
 		}
 	}
-	prom.set_value(); 
+	prom.set_value(min);
+}
+
+void sortSelect(int* arr, const int size)
+{
+	for (int i = 0; i < size - 1; i++) {
+		std::promise<int> myPromise{};
+
+		std::future<int> myFuture{ myPromise.get_future() };
+	
+		std::thread t(min_index, std::ref(arr), i, size, std::ref(myPromise));
+
+		t.detach();
+
+		int min_index = myFuture.get();
+
+		if(i != min_index)
+		{
+			int temp = arr[i];
+			arr[i] = arr[min_index];
+			arr[min_index] = temp;
+		}
+	}
 }
 
 int main()
 {
-	int arr[]{ 4, 22, 56, 88, 2, 45, 56, 7 };
+	int arr[]{ 4, 22, 56, 88, 2, 45, 56, 5 };
 	int size{ sizeof(arr) / sizeof(arr[0]) };
 
-	std::promise<void> myPromise{};
+	sortSelect(arr, size);
 
-	std::future<void> myFuture{ myPromise.get_future() };
-
-	std::thread myThread(sortSelect, arr, size, std::ref(myPromise));
-
-	myFuture.get();
-
-	for (int i = 0; size > i; ++i)
+	for (const auto a : arr)
 	{
-		std::cout << arr[i] << " ";
+		std::cout << a << " ";
 	}
 
 	std::cout << std::endl;
-
-	myThread.join();
 
 	return EXIT_SUCCESS;
 }
